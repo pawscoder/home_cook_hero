@@ -1,73 +1,102 @@
-# React + TypeScript + Vite
+# Home Cook Hero
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A shared household habit tracker for cooking at home. Helps members of a household break the habit of eating out, track streaks, celebrate wins, and stay motivated with rewards.
 
-Currently, two official plugins are available:
+## Tech Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **React + TypeScript** via Vite
+- **React Router** — 4 screens
+- **canvas-confetti** — celebration animations
+- **localStorage** — data layer (Firebase swap planned for later)
 
-## React Compiler
+## Getting Started
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Screens
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+| Route | Screen | Description |
+|---|---|---|
+| `/` | Dashboard | Streak, stats, rewards progress, log a meal |
+| `/meals` | Meal Randomizer | Spin for a random meal idea by category |
+| `/rewards` | Rewards | View and manage milestone rewards |
+| `/settings` | Settings | Names, savings rate, meal lists, danger zone |
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Project Structure
+
 ```
+src/
+  types.ts                  # all shared TypeScript interfaces and types
+  hooks/
+    useHousehold.ts         # the only file that touches localStorage
+  components/
+    StreakCard.tsx
+    StatsRow.tsx
+    RewardsProgress.tsx
+    ActionButtons.tsx
+    ActivityLog.tsx
+    MealTabs.tsx
+    MealResult.tsx
+    RewardItem.tsx
+    AddRewardForm.tsx
+    NavBar.tsx
+  screens/
+    Dashboard.tsx
+    MealRandomizer.tsx
+    Rewards.tsx
+    Settings.tsx
+  utils/
+    animations.ts           # confetti + guilt helpers
+    dateHelpers.ts          # date formatting utilities
+  App.tsx
+  main.tsx
+```
+
+## Data Layer
+
+All state is managed through a single custom hook — `useHousehold.ts`. Components never access localStorage directly. This makes the planned Firebase migration a one-file change.
+
+```
+Components → useHousehold.ts → localStorage (now) → Firebase (later)
+```
+
+The hook exposes:
+
+```ts
+const {
+  data,             // HouseholdState — full app state
+  logCook,          // (meal: MealTime) => void
+  logEatOut,        // (meal: MealTime) => void
+  logSkip,          // (meal: MealTime) => void
+  spinMeal,         // (category: MealCategory) => string
+  updateSettings,   // (partial: Partial<HouseholdState>) => void
+  updateMeals,      // (category: MealCategory, meals: string[]) => void
+  updateRewards,    // (rewards: Reward[]) => void
+  resetStreak,      // () => void
+} = useHousehold()
+```
+
+## Rewards
+
+Three built-in milestone rewards, unlocked automatically when streak targets are hit:
+
+| Reward | Streak Target |
+|---|---|
+| Nice dinner out 🍷 | 7 days |
+| Spa day 💆 | 14 days |
+| Weekend trip ✈️ | 30 days |
+
+## Build Plan
+
+| Session | Goal |
+|---|---|
+| 1 | Project setup + types + `useHousehold` hook |
+| 2 | Dashboard skeleton + ActionButtons |
+| 3 | RewardsProgress + reward unlocking |
+| 4 | Meal Randomizer screen |
+| 5 | Settings screen |
+| 6 | Animations + polish |
+| 7 | Firebase swap |
