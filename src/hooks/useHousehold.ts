@@ -65,7 +65,10 @@ const DEFAULT_STATE: HouseholdState = {
 function load(): HouseholdState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) return JSON.parse(raw) as HouseholdState
+    if (raw) {
+      const state = JSON.parse(raw) as HouseholdState
+      return { ...state, rewards: unlockRewards(state.rewards, state.streak) }
+    }
   } catch {
     // fall through to default
   }
@@ -143,7 +146,7 @@ export function useHousehold() {
 
   function logCook(meal: MealTime, date: string = today()): void {
     const newLog = buildLog(meal, "cooked", date)
-    const isOverwrite = newLog.length === data.log.length // same length means an entry was replaced
+    const isOverwrite = newLog.length === data.log.length
 
     let streak: number, bestStreak: number, mealsCookedThisMonth: number, moneySavedThisMonth: number
 
@@ -172,8 +175,6 @@ export function useHousehold() {
     const newLog = buildLog(meal, "eatout", date)
     const isOverwrite = newLog.length === data.log.length
 
-    let bestStreak: number
-
     if (isOverwrite) {
       const recalc = recalculateFromLog(newLog, data.avgMealSavings, data.bestStreak)
       update({
@@ -185,7 +186,7 @@ export function useHousehold() {
         log: newLog,
       })
     } else {
-      bestStreak = Math.max(data.streak, data.bestStreak)
+      const bestStreak = Math.max(data.streak, data.bestStreak)
       update({ ...data, streak: 0, bestStreak, log: newLog })
     }
   }
@@ -224,11 +225,18 @@ export function useHousehold() {
   }
 
   function updateRewards(rewards: Reward[]): void {
-    update({ ...data, rewards })
+    update({ ...data, rewards: unlockRewards(rewards, data.streak) })
   }
 
   function resetStreak(): void {
-    update({ ...data, streak: 0 })
+    update({
+      ...data,
+      streak: 0,
+      mealsCookedThisMonth: 0,
+      moneySavedThisMonth: 0,
+      log: [],
+      rewards: data.rewards.map((r) => ({ ...r, unlocked: false })),
+    })
   }
 
   return {

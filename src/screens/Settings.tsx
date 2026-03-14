@@ -96,7 +96,7 @@ function DangerZone() {
 
   function handleReset() {
     const confirmed = window.confirm(
-      "Are you sure? This will reset your current streak to 0. Your best streak will be preserved."
+      "Are you sure? This will reset your streak, savings, and activity log, and lock all rewards. Your best streak will be preserved."
     )
     if (confirmed) resetStreak()
   }
@@ -104,7 +104,7 @@ function DangerZone() {
   return (
     <section className="settings__section settings__section--danger">
       <div className="settings__section-title">Danger Zone</div>
-      <button className="btn-danger" onClick={handleReset}>Reset Streak</button>
+      <button className="btn-danger" onClick={handleReset}>Reset streak, savings and activity</button>
     </section>
   )
 }
