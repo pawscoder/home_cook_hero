@@ -1,4 +1,6 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { doc, onSnapshot, setDoc, updateDoc } from "firebase/firestore"
+import { db } from "../firebase"
 import type {
   HouseholdState,
   LogEntry,
@@ -7,7 +9,7 @@ import type {
   Reward,
 } from "../types"
 
-const STORAGE_KEY = "home-cook-hero"
+const HOUSEHOLD_ID = import.meta.env.VITE_HOUSEHOLD_ID as string
 
 const DEFAULT_STATE: HouseholdState = {
   streak: 0,
@@ -62,23 +64,6 @@ const DEFAULT_STATE: HouseholdState = {
   ],
 }
 
-function load(): HouseholdState {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) {
-      const state = JSON.parse(raw) as HouseholdState
-      return { ...state, rewards: unlockRewards(state.rewards, state.streak) }
-    }
-  } catch {
-    // fall through to default
-  }
-  return DEFAULT_STATE
-}
-
-function save(state: HouseholdState): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
-}
-
 function today(): string {
   return new Date().toISOString().split("T")[0]
 }
@@ -89,20 +74,16 @@ function unlockRewards(rewards: Reward[], streak: number): Reward[] {
   )
 }
 
-// Derives streak, bestStreak, mealsCookedThisMonth, and moneySavedThisMonth
-// directly from the log array. Used when overwriting an existing entry so that
-// all counters stay consistent regardless of the old→new type transition.
 function recalculateFromLog(
   log: LogEntry[],
   avgMealSavings: number,
   previousBestStreak: number
 ): Pick<HouseholdState, "streak" | "bestStreak" | "mealsCookedThisMonth" | "moneySavedThisMonth"> {
-  const currentMonth = new Date().toISOString().slice(0, 7) // "YYYY-MM"
+  const currentMonth = new Date().toISOString().slice(0, 7)
   let streak = 0
   let bestStreak = previousBestStreak
   let mealsCookedThisMonth = 0
 
-  // Sort by id (Date.now()) to replay events in insertion order
   const sorted = [...log].sort((a, b) => a.id - b.id)
 
   for (const entry of sorted) {
@@ -113,7 +94,6 @@ function recalculateFromLog(
       if (streak > bestStreak) bestStreak = streak
       streak = 0
     }
-    // skipped: streak unchanged
     if (entry.type === "cooked" && entry.date.startsWith(currentMonth)) {
       mealsCookedThisMonth++
     }
@@ -128,15 +108,27 @@ function recalculateFromLog(
 }
 
 export function useHousehold() {
-  const [data, setData] = useState<HouseholdState>(load)
+  const [data, setData] = useState<HouseholdState>(DEFAULT_STATE)
+  const [loading, setLoading] = useState(true)
 
-  function update(next: HouseholdState) {
-    save(next)
-    setData(next)
+  const docRef = doc(db, "households", HOUSEHOLD_ID)
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(docRef, async (snapshot) => {
+      if (!snapshot.exists()) {
+        await setDoc(docRef, DEFAULT_STATE)
+      } else {
+        setData(snapshot.data() as HouseholdState)
+        setLoading(false)
+      }
+    })
+    return unsubscribe
+  }, [])
+
+  async function write(next: HouseholdState) {
+    await updateDoc(docRef, next as Record<string, unknown>)
   }
 
-  // Builds the new log for a meal action, replacing any existing entry for the
-  // same meal type on the same day. Returns the updated log array.
   function buildLog(meal: MealTime, type: "cooked" | "eatout" | "skipped", date: string): LogEntry[] {
     const filtered = data.log.filter(
       (e) => !(e.date === date && e.meal === meal)
@@ -160,7 +152,7 @@ export function useHousehold() {
       moneySavedThisMonth = data.moneySavedThisMonth + data.avgMealSavings
     }
 
-    update({
+    write({
       ...data,
       streak,
       bestStreak,
@@ -177,7 +169,7 @@ export function useHousehold() {
 
     if (isOverwrite) {
       const recalc = recalculateFromLog(newLog, data.avgMealSavings, data.bestStreak)
-      update({
+      write({
         ...data,
         streak: recalc.streak,
         bestStreak: recalc.bestStreak,
@@ -187,7 +179,7 @@ export function useHousehold() {
       })
     } else {
       const bestStreak = Math.max(data.streak, data.bestStreak)
-      update({ ...data, streak: 0, bestStreak, log: newLog })
+      write({ ...data, streak: 0, bestStreak, log: newLog })
     }
   }
 
@@ -197,7 +189,7 @@ export function useHousehold() {
 
     if (isOverwrite) {
       const recalc = recalculateFromLog(newLog, data.avgMealSavings, data.bestStreak)
-      update({
+      write({
         ...data,
         streak: recalc.streak,
         bestStreak: recalc.bestStreak,
@@ -206,8 +198,7 @@ export function useHousehold() {
         log: newLog,
       })
     } else {
-      // Skip is neutral — streak unchanged, no reward check
-      update({ ...data, log: newLog })
+      write({ ...data, log: newLog })
     }
   }
 
@@ -217,19 +208,19 @@ export function useHousehold() {
   }
 
   function updateSettings(partial: Partial<HouseholdState>): void {
-    update({ ...data, ...partial })
+    write({ ...data, ...partial })
   }
 
   function updateMeals(category: MealCategory, meals: string[]): void {
-    update({ ...data, meals: { ...data.meals, [category]: meals } })
+    write({ ...data, meals: { ...data.meals, [category]: meals } })
   }
 
   function updateRewards(rewards: Reward[]): void {
-    update({ ...data, rewards: unlockRewards(rewards, data.streak) })
+    write({ ...data, rewards: unlockRewards(rewards, data.streak) })
   }
 
   function resetStreak(): void {
-    update({
+    write({
       ...data,
       streak: 0,
       mealsCookedThisMonth: 0,
@@ -241,6 +232,7 @@ export function useHousehold() {
 
   return {
     data,
+    loading,
     logCook,
     logEatOut,
     logSkip,

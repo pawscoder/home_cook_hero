@@ -25,3 +25,6 @@ dist-ssr
 
 # Ignore design folder and its contents
 /design/
+
+# Environment variables (secrets)
+.env
