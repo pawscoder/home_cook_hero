@@ -20,7 +20,7 @@ export default function RewardsProgress({ streak, rewards }: Props) {
       {nextReward ? (
         <div className="rewards-progress__next">
           <div className="rewards-progress__next-label">
-            Next: {nextReward.label} ({nextReward.streakTarget} days)
+            Next: {nextReward.label} ({nextReward.streakTarget} meals)
           </div>
           <progress
             className="rewards-progress__bar"

@@ -17,7 +17,7 @@ export default function RewardItem({ reward, isNext, onDelete }: Props) {
     <div className={`reward-item ${modifier}`}>
       <span className="reward-item__status">{status}</span>
       <span className="reward-item__label">{reward.label}</span>
-      <span className="reward-item__target">{reward.streakTarget}d</span>
+      <span className="reward-item__target">{reward.streakTarget} meals</span>
       {onDelete && (
         <button className="btn-delete" onClick={() => onDelete(reward.id)}>
           Delete

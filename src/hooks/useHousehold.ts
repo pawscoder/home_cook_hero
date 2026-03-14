@@ -56,9 +56,9 @@ const DEFAULT_STATE: HouseholdState = {
     ],
   },
   rewards: [
-    { id: "r1", label: "Nice dinner out 🍷", streakTarget: 7, unlocked: false },
-    { id: "r2", label: "Spa day 💆", streakTarget: 14, unlocked: false },
-    { id: "r3", label: "Weekend trip ✈️", streakTarget: 30, unlocked: false },
+    { id: "r1", label: "Nice dinner out 🍷", streakTarget: 21, unlocked: false },
+    { id: "r2", label: "Spa day 💆", streakTarget: 42, unlocked: false },
+    { id: "r3", label: "Weekend trip ✈️", streakTarget: 90, unlocked: false },
   ],
 }
 
@@ -103,13 +103,14 @@ function recalculateFromLog(
   const sorted = [...log].sort((a, b) => a.id - b.id)
 
   for (const entry of sorted) {
-    if (entry.type === "cooked" || entry.type === "skipped") {
+    if (entry.type === "cooked") {
       streak++
       if (streak > bestStreak) bestStreak = streak
-    } else {
+    } else if (entry.type === "eatout") {
       if (streak > bestStreak) bestStreak = streak
       streak = 0
     }
+    // skipped: streak unchanged
     if (entry.type === "cooked" && entry.date.startsWith(currentMonth)) {
       mealsCookedThisMonth++
     }
@@ -193,31 +194,19 @@ export function useHousehold() {
     const newLog = buildLog(meal, "skipped", date)
     const isOverwrite = newLog.length === data.log.length
 
-    let streak: number, bestStreak: number
-
     if (isOverwrite) {
       const recalc = recalculateFromLog(newLog, data.avgMealSavings, data.bestStreak)
-      streak = recalc.streak
-      bestStreak = recalc.bestStreak
       update({
         ...data,
-        streak,
-        bestStreak,
+        streak: recalc.streak,
+        bestStreak: recalc.bestStreak,
         mealsCookedThisMonth: recalc.mealsCookedThisMonth,
         moneySavedThisMonth: recalc.moneySavedThisMonth,
         log: newLog,
-        rewards: unlockRewards(data.rewards, streak),
       })
     } else {
-      streak = data.streak + 1
-      bestStreak = Math.max(streak, data.bestStreak)
-      update({
-        ...data,
-        streak,
-        bestStreak,
-        log: newLog,
-        rewards: unlockRewards(data.rewards, streak),
-      })
+      // Skip is neutral — streak unchanged, no reward check
+      update({ ...data, log: newLog })
     }
   }
 

@@ -39,7 +39,7 @@ export default function AddRewardForm({ rewards, updateRewards }: Props) {
         <input
           className="add-reward-form__target"
           type="number"
-          placeholder="Days"
+          placeholder="Meals"
           value={streakTarget}
           min={1}
           onChange={(e) => setStreakTarget(e.target.value)}
