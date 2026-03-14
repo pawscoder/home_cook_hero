@@ -27,18 +27,18 @@ export default function Dashboard() {
     prevRewardsRef.current = data.rewards
   }, [data.rewards])
 
-  function handleCook(meal: MealTime) {
-    logCook(meal)
+  function handleCook(meal: MealTime, date: string) {
+    logCook(meal, date)
     triggerCelebration()
   }
 
-  function handleSkip(meal: MealTime) {
-    logSkip(meal)
+  function handleSkip(meal: MealTime, date: string) {
+    logSkip(meal, date)
     triggerSkip()
   }
 
-  function handleEatOut(meal: MealTime) {
-    logEatOut(meal)
+  function handleEatOut(meal: MealTime, date: string) {
+    logEatOut(meal, date)
     triggerGuilt()
   }
 

@@ -133,16 +133,15 @@ export function useHousehold() {
 
   // Builds the new log for a meal action, replacing any existing entry for the
   // same meal type on the same day. Returns the updated log array.
-  function buildLog(meal: MealTime, type: "cooked" | "eatout" | "skipped"): LogEntry[] {
-    const todayStr = today()
+  function buildLog(meal: MealTime, type: "cooked" | "eatout" | "skipped", date: string): LogEntry[] {
     const filtered = data.log.filter(
-      (e) => !(e.date === todayStr && e.meal === meal)
+      (e) => !(e.date === date && e.meal === meal)
     )
-    return [...filtered, { id: Date.now(), type, meal, date: todayStr, note: "" }]
+    return [...filtered, { id: Date.now(), type, meal, date, note: "" }]
   }
 
-  function logCook(meal: MealTime): void {
-    const newLog = buildLog(meal, "cooked")
+  function logCook(meal: MealTime, date: string = today()): void {
+    const newLog = buildLog(meal, "cooked", date)
     const isOverwrite = newLog.length === data.log.length // same length means an entry was replaced
 
     let streak: number, bestStreak: number, mealsCookedThisMonth: number, moneySavedThisMonth: number
@@ -168,8 +167,8 @@ export function useHousehold() {
     })
   }
 
-  function logEatOut(meal: MealTime): void {
-    const newLog = buildLog(meal, "eatout")
+  function logEatOut(meal: MealTime, date: string = today()): void {
+    const newLog = buildLog(meal, "eatout", date)
     const isOverwrite = newLog.length === data.log.length
 
     let bestStreak: number
@@ -190,8 +189,8 @@ export function useHousehold() {
     }
   }
 
-  function logSkip(meal: MealTime): void {
-    const newLog = buildLog(meal, "skipped")
+  function logSkip(meal: MealTime, date: string = today()): void {
+    const newLog = buildLog(meal, "skipped", date)
     const isOverwrite = newLog.length === data.log.length
 
     let streak: number, bestStreak: number
