@@ -1,6 +1,7 @@
 import { useState } from "react"
 import type {
   HouseholdState,
+  LogEntry,
   MealCategory,
   MealTime,
   Reward,
@@ -85,6 +86,43 @@ function unlockRewards(rewards: Reward[], streak: number): Reward[] {
   )
 }
 
+// Derives streak, bestStreak, mealsCookedThisMonth, and moneySavedThisMonth
+// directly from the log array. Used when overwriting an existing entry so that
+// all counters stay consistent regardless of the old→new type transition.
+function recalculateFromLog(
+  log: LogEntry[],
+  avgMealSavings: number,
+  previousBestStreak: number
+): Pick<HouseholdState, "streak" | "bestStreak" | "mealsCookedThisMonth" | "moneySavedThisMonth"> {
+  const currentMonth = new Date().toISOString().slice(0, 7) // "YYYY-MM"
+  let streak = 0
+  let bestStreak = previousBestStreak
+  let mealsCookedThisMonth = 0
+
+  // Sort by id (Date.now()) to replay events in insertion order
+  const sorted = [...log].sort((a, b) => a.id - b.id)
+
+  for (const entry of sorted) {
+    if (entry.type === "cooked" || entry.type === "skipped") {
+      streak++
+      if (streak > bestStreak) bestStreak = streak
+    } else {
+      if (streak > bestStreak) bestStreak = streak
+      streak = 0
+    }
+    if (entry.type === "cooked" && entry.date.startsWith(currentMonth)) {
+      mealsCookedThisMonth++
+    }
+  }
+
+  return {
+    streak,
+    bestStreak,
+    mealsCookedThisMonth,
+    moneySavedThisMonth: mealsCookedThisMonth * avgMealSavings,
+  }
+}
+
 export function useHousehold() {
   const [data, setData] = useState<HouseholdState>(load)
 
@@ -93,52 +131,95 @@ export function useHousehold() {
     setData(next)
   }
 
+  // Builds the new log for a meal action, replacing any existing entry for the
+  // same meal type on the same day. Returns the updated log array.
+  function buildLog(meal: MealTime, type: "cooked" | "eatout" | "skipped"): LogEntry[] {
+    const todayStr = today()
+    const filtered = data.log.filter(
+      (e) => !(e.date === todayStr && e.meal === meal)
+    )
+    return [...filtered, { id: Date.now(), type, meal, date: todayStr, note: "" }]
+  }
+
   function logCook(meal: MealTime): void {
-    const newStreak = data.streak + 1
-    const newBest = Math.max(newStreak, data.bestStreak)
-    const next: HouseholdState = {
-      ...data,
-      streak: newStreak,
-      bestStreak: newBest,
-      mealsCookedThisMonth: data.mealsCookedThisMonth + 1,
-      moneySavedThisMonth: data.moneySavedThisMonth + data.avgMealSavings,
-      log: [
-        ...data.log,
-        { id: Date.now(), type: "cooked", meal, date: today(), note: "" },
-      ],
-      rewards: unlockRewards(data.rewards, newStreak),
+    const newLog = buildLog(meal, "cooked")
+    const isOverwrite = newLog.length === data.log.length // same length means an entry was replaced
+
+    let streak: number, bestStreak: number, mealsCookedThisMonth: number, moneySavedThisMonth: number
+
+    if (isOverwrite) {
+      ;({ streak, bestStreak, mealsCookedThisMonth, moneySavedThisMonth } =
+        recalculateFromLog(newLog, data.avgMealSavings, data.bestStreak))
+    } else {
+      streak = data.streak + 1
+      bestStreak = Math.max(streak, data.bestStreak)
+      mealsCookedThisMonth = data.mealsCookedThisMonth + 1
+      moneySavedThisMonth = data.moneySavedThisMonth + data.avgMealSavings
     }
-    update(next)
+
+    update({
+      ...data,
+      streak,
+      bestStreak,
+      mealsCookedThisMonth,
+      moneySavedThisMonth,
+      log: newLog,
+      rewards: unlockRewards(data.rewards, streak),
+    })
   }
 
   function logEatOut(meal: MealTime): void {
-    const newBest = Math.max(data.streak, data.bestStreak)
-    const next: HouseholdState = {
-      ...data,
-      streak: 0,
-      bestStreak: newBest,
-      log: [
-        ...data.log,
-        { id: Date.now(), type: "eatout", meal, date: today(), note: "" },
-      ],
+    const newLog = buildLog(meal, "eatout")
+    const isOverwrite = newLog.length === data.log.length
+
+    let bestStreak: number
+
+    if (isOverwrite) {
+      const recalc = recalculateFromLog(newLog, data.avgMealSavings, data.bestStreak)
+      update({
+        ...data,
+        streak: recalc.streak,
+        bestStreak: recalc.bestStreak,
+        mealsCookedThisMonth: recalc.mealsCookedThisMonth,
+        moneySavedThisMonth: recalc.moneySavedThisMonth,
+        log: newLog,
+      })
+    } else {
+      bestStreak = Math.max(data.streak, data.bestStreak)
+      update({ ...data, streak: 0, bestStreak, log: newLog })
     }
-    update(next)
   }
 
   function logSkip(meal: MealTime): void {
-    const newStreak = data.streak + 1
-    const newBest = Math.max(newStreak, data.bestStreak)
-    const next: HouseholdState = {
-      ...data,
-      streak: newStreak,
-      bestStreak: newBest,
-      log: [
-        ...data.log,
-        { id: Date.now(), type: "skipped", meal, date: today(), note: "" },
-      ],
-      rewards: unlockRewards(data.rewards, newStreak),
+    const newLog = buildLog(meal, "skipped")
+    const isOverwrite = newLog.length === data.log.length
+
+    let streak: number, bestStreak: number
+
+    if (isOverwrite) {
+      const recalc = recalculateFromLog(newLog, data.avgMealSavings, data.bestStreak)
+      streak = recalc.streak
+      bestStreak = recalc.bestStreak
+      update({
+        ...data,
+        streak,
+        bestStreak,
+        mealsCookedThisMonth: recalc.mealsCookedThisMonth,
+        moneySavedThisMonth: recalc.moneySavedThisMonth,
+        log: newLog,
+        rewards: unlockRewards(data.rewards, streak),
+      })
+    } else {
+      streak = data.streak + 1
+      bestStreak = Math.max(streak, data.bestStreak)
+      update({
+        ...data,
+        streak,
+        bestStreak,
+        log: newLog,
+        rewards: unlockRewards(data.rewards, streak),
+      })
     }
-    update(next)
   }
 
   function spinMeal(category: MealCategory): string {
