@@ -531,7 +531,7 @@ body {
 
 /* ─── Settings screen ────────────────────────────── */
 .settings-screen {
-  padding: 0 16px;
+  padding: 0 16px 84px;
 }
 .settings__section {
   background: var(--surface);
