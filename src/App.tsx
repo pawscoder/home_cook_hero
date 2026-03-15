@@ -4,29 +4,9 @@ import Dashboard from "./screens/Dashboard"
 import Rewards from "./screens/Rewards"
 import MealRandomizer from "./screens/MealRandomizer"
 import Settings from "./screens/Settings"
-import Login from "./screens/Login"
 import { useHousehold } from "./hooks/useHousehold"
-import { useAuth } from "./hooks/useAuth"
 
 export default function App() {
-  const { authLoading, allowed } = useAuth()
-
-  if (authLoading) {
-    return (
-      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}>
-        Loading... 🍳
-      </div>
-    )
-  }
-
-  if (!allowed) {
-    return <Login />
-  }
-
-  return <AuthenticatedApp />
-}
-
-function AuthenticatedApp() {
   const { loading } = useHousehold()
 
   if (loading) {
