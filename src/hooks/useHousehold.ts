@@ -114,19 +114,26 @@ export function useHousehold() {
   const docRef = doc(db, "households", HOUSEHOLD_ID)
 
   useEffect(() => {
-    const unsubscribe = onSnapshot(docRef, async (snapshot) => {
-      if (!snapshot.exists()) {
-        await setDoc(docRef, DEFAULT_STATE)
-      } else {
-        setData(snapshot.data() as HouseholdState)
+    const unsubscribe = onSnapshot(
+      docRef,
+      async (snapshot) => {
+        if (!snapshot.exists()) {
+          await setDoc(docRef, DEFAULT_STATE)
+        } else {
+          setData(snapshot.data() as HouseholdState)
+          setLoading(false)
+        }
+      },
+      (error) => {
+        console.error("Firestore error:", error)
         setLoading(false)
       }
-    })
+    )
     return unsubscribe
   }, [])
 
   async function write(next: HouseholdState) {
-    await updateDoc(docRef, next as Record<string, unknown>)
+    await updateDoc(docRef, next as unknown as Record<string, unknown>)
   }
 
   function buildLog(meal: MealTime, type: "cooked" | "eatout" | "skipped", date: string): LogEntry[] {
