@@ -28,3 +28,6 @@ dist-ssr
 
 # Environment variables (secrets)
 .env
+
+# Firebase local cache
+.firebase/
