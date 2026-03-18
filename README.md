@@ -1,13 +1,15 @@
 # Home Cook Hero
 
+> **Vibe code experiment** — built session by session with Claude Code, with some disagreements and corrections, in the end, only a small amount of manual coding was needed.
+
 A shared household habit tracker for cooking at home. Helps members of a household break the habit of eating out, track streaks, celebrate wins, and stay motivated with rewards.
 
 ## Tech Stack
 
 - **React + TypeScript** via Vite
-- **React Router** — 4 screens
+- **React Router** — 4 screens + auth screens
 - **canvas-confetti** — celebration animations
-- **localStorage** — data layer (Firebase swap planned for later)
+- **Firebase** — Firestore (data layer) + Firebase Auth (authentication)
 
 ## Getting Started
 
@@ -24,6 +26,8 @@ npm run dev
 | `/meals` | Meal Randomizer | Spin for a random meal idea by category |
 | `/rewards` | Rewards | View and manage milestone rewards |
 | `/settings` | Settings | Names, savings rate, meal lists, danger zone |
+| `/login` | Login | Sign in with email/password |
+| `/signup` | Sign Up | Create a new account |
 
 ## Project Structure
 
@@ -40,6 +44,7 @@ src/
     ActivityLog.tsx
     MealTabs.tsx
     MealResult.tsx
+    SpinButton.tsx
     RewardItem.tsx
     AddRewardForm.tsx
     NavBar.tsx
@@ -48,19 +53,23 @@ src/
     MealRandomizer.tsx
     Rewards.tsx
     Settings.tsx
+    Login.tsx
+    SignUp.tsx
   utils/
     animations.ts           # confetti + guilt helpers
     dateHelpers.ts          # date formatting utilities
+    authErrors.ts           # Firebase auth error messages
+  firebase.ts               # Firestore + Auth initialization
   App.tsx
   main.tsx
 ```
 
 ## Data Layer
 
-All state is managed through a single custom hook — `useHousehold.ts`. Components never access localStorage directly. This makes the planned Firebase migration a one-file change.
+All state is managed through a single custom hook — `useHousehold.ts`. Components never access the data layer directly.
 
 ```
-Components → useHousehold.ts → localStorage (now) → Firebase (later)
+Components → useHousehold.ts → Firebase Firestore
 ```
 
 The hook exposes:
@@ -91,12 +100,13 @@ Three built-in milestone rewards, unlocked automatically when streak targets are
 
 ## Build Plan
 
-| Session | Goal |
-|---|---|
-| 1 | Project setup + types + `useHousehold` hook |
-| 2 | Dashboard skeleton + ActionButtons |
-| 3 | RewardsProgress + reward unlocking |
-| 4 | Meal Randomizer screen |
-| 5 | Settings screen |
-| 6 | Animations + polish |
-| 7 | Firebase swap |
+| Session | Goal | Status |
+|---|---|---|
+| 1 | Project setup + types + `useHousehold` hook | Done |
+| 2 | Dashboard skeleton + ActionButtons | Done |
+| 3 | RewardsProgress + reward unlocking | Done |
+| 4 | Meal Randomizer screen | Done |
+| 5 | Settings screen | Done |
+| 6 | Firebase data layer migration | Done |
+| 7 | Authentication (Login + Sign Up) | Done |
+| 8 | Animations + polish | Planned |
